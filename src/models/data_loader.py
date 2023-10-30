@@ -28,18 +28,18 @@ class Batch(object):
 
             labels = torch.tensor(self._pad(pre_labels, 0))
             segs = torch.tensor(self._pad(pre_segs, 0))
-            mask = 1 - (src == 0)
+            mask = ~(src == 0)  # This will produce a bool tensor, which is commonly used for masks.
 
             clss = torch.tensor(self._pad(pre_clss, -1))
-            mask_cls = 1 - (clss == -1)
+            mask_cls = ~(clss == -1)
             clss[clss == -1] = 0
 
             setattr(self, 'clss', clss.to(device))
-            setattr(self, 'mask_cls', mask_cls.to(device))
+            setattr(self, 'mask_cls', mask_cls.to(device).float())  # Convert to float if necessary
             setattr(self, 'src', src.to(device))
             setattr(self, 'labels', labels.to(device))
             setattr(self, 'segs', segs.to(device))
-            setattr(self, 'mask', mask.to(device))
+            setattr(self, 'mask', mask.to(device).float())  # Convert to float if necessary
 
             if (is_test):
                 src_str = [x[-2] for x in data]
@@ -49,6 +49,7 @@ class Batch(object):
 
     def __len__(self):
         return self.batch_size
+
 
 
 def batch(data, batch_size):

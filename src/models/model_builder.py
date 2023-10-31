@@ -40,58 +40,86 @@ def build_optim(args, model, checkpoint):
     return optim
 
 
+
+
+import torch
+import torch.nn as nn
+from transformers import BertModel, BertTokenizer
+
+# 定义模型
 class Bert(nn.Module):
     def __init__(self, temp_dir, load_pretrained_bert, bert_config):
         super(Bert, self).__init__()
-        if(load_pretrained_bert):
+        if load_pretrained_bert:
             self.model = BertModel.from_pretrained('bert-base-uncased', cache_dir=temp_dir)
         else:
             self.model = BertModel(bert_config)
 
     def forward(self, x, segs, mask):
-        encoded_layers, _ = self.model(x, segs, attention_mask =mask)
+        encoded_layers, _ = self.model(x, segs, attention_mask=mask)
         top_vec = encoded_layers[-1]
         return top_vec
 
-
-
+# 构建模型
 class Summarizer(nn.Module):
-    def __init__(self, args, device, load_pretrained_bert = False, bert_config = None):
+    def __init__(self, args, device, load_pretrained_bert=False, bert_config=None):
         super(Summarizer, self).__init__()
         self.args = args
         self.device = device
-        self.bert = Bert(args.temp_dir, load_pretrained_bert, bert_config)
-        if (args.encoder == 'classifier'):
-            self.encoder = Classifier(self.bert.model.config.hidden_size)
-        elif(args.encoder=='transformer'):
-            self.encoder = TransformerInterEncoder(self.bert.model.config.hidden_size, args.ff_size, args.heads,
-                                                   args.dropout, args.inter_layers)
-        elif(args.encoder=='rnn'):
-            self.encoder = RNNEncoder(bidirectional=True, num_layers=1,
-                                      input_size=self.bert.model.config.hidden_size, hidden_size=args.rnn_size,
-                                      dropout=args.dropout)
-        elif (args.encoder == 'baseline'):
-            bert_config = BertConfig(self.bert.model.config.vocab_size, hidden_size=args.hidden_size,
-                                     num_hidden_layers=6, num_attention_heads=8, intermediate_size=args.ff_size)
-            self.bert.model = BertModel(bert_config)
-            self.encoder = Classifier(self.bert.model.config.hidden_size)
+        if hasattr(args, 'temp_dir') and args.temp_dir is not None:
+            self.bert = Bert(args.temp_dir, load_pretrained_bert, bert_config)
+        else:
+            raise ValueError("Missing 'temp_dir' attribute in 'args' object.")
 
-        if args.param_init != 0.0:
-            for p in self.encoder.parameters():
-                p.data.uniform_(-args.param_init, args.param_init)
-        if args.param_init_glorot:
-            for p in self.encoder.parameters():
-                if p.dim() > 1:
-                    xavier_uniform_(p)
-
-        self.to(device)
-    def load_cp(self, pt):
-        self.load_state_dict(pt['model'], strict=True)
+        # 添加其他初始化代码，如 encoder、optimizer 等
 
     def forward(self, x, segs, clss, mask, mask_cls, sentence_range=None):
-
         top_vec = self.bert(x, segs, mask)
         sents_vec = top_vec[torch.arange(top_vec.size(0)).unsqueeze(1), clss]
         sents_vec = sents_vec * mask_cls[:, :, None].float()
-        sent_scores = self.encoder(sents_vec, mask_cls).squeeze(-1)
-        return sent_scores, mask_cls
+        # 添加摘要生成的代码
+
+# 定义优化器的构建函数
+def build_optim(args, model, checkpoint):
+    # 添加构建优化器的代码
+
+# 加载模型和检查点
+def load_model(model_path, device):
+    # 添加加载模型和检查点的代码
+    # 返回加载的模型、优化器等对象
+
+# 准备输入文本和其他预处理步骤
+def prepare_input(text, tokenizer):
+    # 添加输入文本的预处理代码
+
+# 执行摘要生成
+def generate_summary(model, input_data):
+    # 添加摘要生成的代码
+    # 返回摘要结果
+
+# 处理输出结果
+def process_output(summary_tokens, tokenizer):
+    # 添加处理输出结果的代码
+    # 返回最终的摘要字符串
+
+if __name__ == '__main__':
+    # 设置参数
+    args = YourArgsClass(...)  # 你需要替换成你的参数设置
+
+    # 加载模型和检查点
+    model, optimizer, checkpoint = load_model('your_model_checkpoint.pth', device)
+
+    # 准备输入文本
+    input_text = "Your input text goes here..."
+    tokenizer = BertTokenizer.from_pretrained('bert-base-uncased', do_lower_case=True)
+    input_data = prepare_input(input_text, tokenizer)
+
+    # 执行摘要生成
+    summary_tokens = generate_summary(model, input_data)
+
+    # 处理输出结果
+    summary_text = process_output(summary_tokens, tokenizer)
+
+    print("Generated Summary:")
+    print(summary_text)
+
